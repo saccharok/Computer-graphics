@@ -1,3 +1,1 @@
-# Computer-graphics
-"Компьютерная графика"
-4 курс ПИ АлтГТУ им. И. И. Ползунова
+# Computer-graphics-lr1_AffineTransform

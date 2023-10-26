@@ -6,11 +6,10 @@ namespace kg_lab1
 {
     public partial class MainForm : Form
     {
-        private int[,] Z;
+        private float[,] Z;
         private float[,] proection;
         private int cenX;
         private int cenY;
-
         private Graphics _graphics;
 
         public MainForm() 
@@ -22,58 +21,69 @@ namespace kg_lab1
             cenX = Size.Width / 2;
             cenY = Size.Height / 2;
             SetDefaultPosition();
-            //центральное проецирование относительно центра правосторонней системы координат
+            //кабинетное проецирование относительно центра правосторонней системы координат
             float[,] p =
             {
-                { 1, 0, 0, 1},
-                { 0, -1, 0, 1},
-                { 0, 0, 1, 1},
+                { 1, 0, 0, 0},
+                { 0, -1, 0, 0},
+                { -(float)(Math.Cos(Math.PI/4))/2, (float)(Math.Cos(Math.PI/4))/2, 0, 0},
                 { cenX, cenY, 0, 1}
             };
             proection = p;
             DrawZ();
         }
 
-
         //умножение матриц
-        private int[,] Mult(int[,] X, float[,] Y)
+        private float[,] Mult(float[,] X, float[,] Y)
         {
             float[,] result = new float[X.GetLength(0), Y.GetLength(1)];
             for (int i = 0; i < X.GetLength(0); i++)
                 for (int j = 0; j < Y.GetLength(1); j++)
                     for (int k = 0; k < Y.GetLength(0); k++)
                         result[i, j] += X[i, k] * Y[k, j];
-            int[,] res = new int[result.GetLength(0), result.GetLength(1)];
-            for (int i = 0; i < result.GetLength(0); i++)
-                for (int j = 0; j < result.GetLength(1); j++)
-                    res[i, j] = Convert.ToInt32(result[i, j]);
-            return res;
+            return result;
         }
 
+        //отрисовка осей
         private void DrawAxis()
         {
             _graphics = CreateGraphics();
             _graphics.Clear(Color.White);
+            float[,] Axis =
+            {
+                { 0, 0, 0, 1},
+                { 500, 0, 0, 1},
+                { 0, 400, 0, 1},
+                { 0, 0, 500, 1},
+                { 490, 5, 0, 1},
+                { 490, -5, 0, 1},
+                { 5, 390, 0, 1},
+                { -5, 390, 0, 1},
+                { 12, 0, 495, 1},
+                { -10, 0, 480, 1}
+            };
+            Axis = Mult(Axis, proection);
             #region X
-            _graphics.DrawLine(Pens.Gray, cenX, cenY, cenX + 500, cenY);
-            _graphics.DrawLine(Pens.Gray, cenX + 500, cenY, cenX + 490, cenY - 10);
-            _graphics.DrawLine(Pens.Gray, cenX + 500, cenY, cenX + 490, cenY + 10);
+            _graphics.DrawLine(Pens.Gray, Axis[0, 0], Axis[0, 1], Axis[1, 0], Axis[1, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[1, 0], Axis[1, 1], Axis[4, 0], Axis[4, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[1, 0], Axis[1, 1], Axis[5, 0], Axis[5, 1]);
             #endregion
             #region Y
-            _graphics.DrawLine(Pens.Gray, cenX, cenY, cenX, cenY - 400);
-            _graphics.DrawLine(Pens.Gray, cenX, cenY - 400, cenX - 10, cenY - 390);
-            _graphics.DrawLine(Pens.Gray, cenX, cenY - 400, cenX + 10, cenY - 390);
+            _graphics.DrawLine(Pens.Gray, Axis[0, 0], Axis[0, 1], Axis[2, 0], Axis[2, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[2, 0], Axis[2, 1], Axis[6, 0], Axis[6, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[2, 0], Axis[2, 1], Axis[7, 0], Axis[7, 1]);
             #endregion
             #region Z
-            _graphics.DrawLine(Pens.Gray, cenX, cenY, cenX - 300, cenY + 150);
-            _graphics.DrawLine(Pens.Gray, cenX - 300, cenY + 150, cenX - 285, cenY + 155);
-            _graphics.DrawLine(Pens.Gray, cenX - 300, cenY + 150, cenX - 300, cenY + 140);
+            _graphics.DrawLine(Pens.Gray, Axis[0, 0], Axis[0, 1], Axis[3, 0], Axis[3, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[3, 0], Axis[3, 1], Axis[8, 0], Axis[8, 1]);
+            _graphics.DrawLine(Pens.Gray, Axis[3, 0], Axis[3, 1], Axis[9, 0], Axis[9, 1]);
             #endregion
         }
 
+        //начальные значения Z
         private void SetDefaultPosition()
         {
-            int[,] DefZ =
+            float[,] DefZ =
             {
                 { 0, 0, 0, 1 },      //A - 0
                 { 0, 20, 0, 1 },     //B - 1
@@ -99,44 +109,24 @@ namespace kg_lab1
             Z = DefZ;
         }
 
-        //преобразования трехмерных координат в двумерные
-        private Point convertToPoint(int x, int y, int z)
-        {
-            Point point = new Point();
-            point.X = x - 2 * z;
-            point.Y = y + z;
-            return point;
-        }
-
+        //отрисовка проекции буквы
         private void DrawZ()
         {
             _graphics = CreateGraphics();
             DrawAxis();
-            int[,] matrixDraw = Mult(Z, proection);
-            Point p1 = new Point();
-            Point p2 = new Point();
+            float[,] matrixDraw = Mult(Z, proection);
             for (int i = 0; i < 9; i++)
             {
-                p1 = convertToPoint(matrixDraw[i, 0], matrixDraw[i, 1], matrixDraw[i, 2]);
-                p2 = convertToPoint(matrixDraw[i + 1, 0], matrixDraw[i + 1, 1] , matrixDraw[i + 1, 2]);
-                _graphics.DrawLine(Pens.Red, p1, p2);
-                p1 = convertToPoint(matrixDraw[i + 10, 0], matrixDraw[i + 10, 1] , matrixDraw[i + 10, 2]);
-                p2 = convertToPoint(matrixDraw[i + 11, 0], matrixDraw[i + 11, 1] , matrixDraw[i + 11, 2]);
-                _graphics.DrawLine(Pens.Red, p1, p2);
-                p1 = convertToPoint(matrixDraw[i, 0], matrixDraw[i, 1] , matrixDraw[i, 2]);
-                p2 = convertToPoint(matrixDraw[i + 10, 0], matrixDraw[i + 10, 1] , matrixDraw[i + 10, 2]);
-                _graphics.DrawLine(Pens.Red, p1, p2);
+                _graphics.DrawLine(Pens.Red, matrixDraw[i, 0], matrixDraw[i, 1], matrixDraw[i + 1, 0], matrixDraw[i + 1, 1]);
+                _graphics.DrawLine(Pens.Red, matrixDraw[i + 10, 0], matrixDraw[i + 10, 1], matrixDraw[i + 11, 0], matrixDraw[i + 11, 1]);
+                _graphics.DrawLine(Pens.Red, matrixDraw[i, 0], matrixDraw[i, 1], matrixDraw[i + 10, 0], matrixDraw[i + 10, 1]);
             }
-            p1 = convertToPoint(matrixDraw[0, 0], matrixDraw[0, 1] , matrixDraw[0, 2]);
-            p2 = convertToPoint(matrixDraw[9, 0], matrixDraw[9, 1] , matrixDraw[9, 2]);
-            _graphics.DrawLine(Pens.Red, p1, p2);
-            p1 = convertToPoint(matrixDraw[10, 0], matrixDraw[10, 1] , matrixDraw[10, 2]);
-            p2 = convertToPoint(matrixDraw[19, 0], matrixDraw[19, 1] , matrixDraw[19, 2]);
-            _graphics.DrawLine(Pens.Red, p1, p2);
-            p1 = convertToPoint(matrixDraw[9, 0], matrixDraw[9, 1] , matrixDraw[9, 2]);
-            _graphics.DrawLine(Pens.Red, p1, p2);
+            _graphics.DrawLine(Pens.Red, matrixDraw[0, 0], matrixDraw[0, 1], matrixDraw[9, 0], matrixDraw[9, 1]);
+            _graphics.DrawLine(Pens.Red, matrixDraw[10, 0], matrixDraw[10, 1], matrixDraw[19, 0], matrixDraw[19, 1]);
+            _graphics.DrawLine(Pens.Red, matrixDraw[9, 0], matrixDraw[9, 1], matrixDraw[19, 0], matrixDraw[19, 1]);
         }
 
+        //поместить буквы начального размера в центр системы координат
         private void buttonDeffaultPosition_Click(object sender, EventArgs e)
         {
             SetDefaultPosition();
@@ -237,11 +227,13 @@ namespace kg_lab1
         private void RotateRightX_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI /180);
             float[,] Rotate =
             {
                 { 1, 0, 0, 0},
-                { 0, ((float)(Math.Cos(toRotate))), ((float)(Math.Sin(toRotate))), 0},
-                { 0, -((float)(Math.Sin(toRotate))), ((float)(Math.Cos(toRotate))), 0},
+                { 0, (float)(Math.Cos(angle)), (float)(Math.Sin(angle)), 0},
+                { 0, -(float)(Math.Sin(angle)), (float)(Math.Cos(angle)), 0},
                 { 0, 0, 0, 1}
             };
             Z = Mult(Z, Rotate);
@@ -252,11 +244,13 @@ namespace kg_lab1
         private void RotateLeftX_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI / 180);
             float[,] Rotate =
             {
                 { 1, 0, 0, 0},
-                { 0, ((float)(Math.Cos(toRotate))), -((float)(Math.Sin(toRotate))), 0},
-                { 0, ((float)(Math.Sin(toRotate))), ((float)(Math.Cos(toRotate))), 0},
+                { 0, (float)Math.Cos(angle), -((float)(Math.Sin(angle))), 0},
+                { 0, ((float)(Math.Sin(angle))), ((float)(Math.Cos(angle))), 0},
                 { 0, 0, 0, 1}
             };
             Z = Mult(Z, Rotate);
@@ -267,11 +261,13 @@ namespace kg_lab1
         private void RotateRightY_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI / 180);
             float[,] Rotate =
             {
-                { ((float)(Math.Cos(toRotate))), 0, ((float)(Math.Sin(toRotate))), 0},
+                { ((float)(Math.Cos(angle))), 0, ((float)(Math.Sin(angle))), 0},
                 { 0, 1, 0, 0},
-                { -((float)(Math.Sin(toRotate))), 0, ((float)(Math.Cos(toRotate))), 0},
+                { -((float)(Math.Sin(angle))), 0, ((float)(Math.Cos(angle))), 0},
                 { 0, 0, 0, 1}
             };
             Z = Mult(Z, Rotate);
@@ -282,11 +278,13 @@ namespace kg_lab1
         private void RotateLeftY_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI / 180);
             float[,] Rotate =
             {
-                { ((float)(Math.Cos(toRotate))), 0, -((float)(Math.Sin(toRotate))), 0},
+                { ((float)(Math.Cos(angle))), 0, -((float)(Math.Sin(angle))), 0},
                 { 0, 1, 0, 0},
-                { ((float)(Math.Sin(toRotate))), 0, ((float)(Math.Cos(toRotate))), 0},
+                { ((float)(Math.Sin(angle))), 0, ((float)(Math.Cos(angle))), 0},
                 { 0, 0, 0, 1}
             };
             Z = Mult(Z, Rotate);
@@ -297,10 +295,12 @@ namespace kg_lab1
         private void RotateRightZ_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI / 180);
             float[,] Rotate =
             {
-                { ((float)(Math.Cos(toRotate))), -((float)(Math.Sin(toRotate))), 0, 0},
-                { ((float)(Math.Sin(toRotate))), ((float)(Math.Cos(toRotate))), 0, 0},
+                { ((float)(Math.Cos(angle))), -((float)(Math.Sin(angle))), 0, 0},
+                { ((float)(Math.Sin(angle))), ((float)(Math.Cos(angle))), 0, 0},
                 { 0, 0, 1, 0},
                 { 0, 0, 0, 1}
             };
@@ -312,10 +312,12 @@ namespace kg_lab1
         private void RotateLeftZ_Click(object sender, EventArgs e)
         {
             int toRotate = Convert.ToInt32(RotateTextBox.Text);
+            //перевод в радианы
+            float angle = (float)(toRotate * Math.PI / 180);
             float[,] Rotate =
             {
-                { ((float)(Math.Cos(toRotate))), ((float)(Math.Sin(toRotate))), 0, 0},
-                { -((float)(Math.Sin(toRotate))), ((float)(Math.Cos(toRotate))), 0, 0},
+                { ((float)(Math.Cos(angle))), ((float)(Math.Sin(angle))), 0, 0},
+                { -((float)(Math.Sin(angle))), ((float)(Math.Cos(angle))), 0, 0},
                 { 0, 0, 1, 0},
                 { 0, 0, 0, 1}
             };
@@ -396,18 +398,19 @@ namespace kg_lab1
         //анимация движения по спирали вдоль OX
         private void taskOX_Click(object sender, EventArgs e)
         {
-            int way = 90;
+            int way = 180;
             int count = 0;
-            int coef = 5;
+            int coef = 3;
+            float angle = (float)(10 * Math.PI / 180);
             float[,] Spiral =
             {
                 { 1, 0, 0, 0},
-                { 0, ((float)(Math.Cos(25))), -((float)(Math.Sin(25))), 0},
-                { 0, ((float)(Math.Sin(25))), ((float)(Math.Cos(25))), 0},
-                { 2, 0, 0, 1}
+                { 0, (float)(Math.Cos(angle)), (float)(Math.Sin(angle)), 0},
+                { 0, -(float)(Math.Sin(angle)), (float)(Math.Cos(angle)), 0},
+                { 1, 0, 0, 1}
             };
             Timer timer = new Timer();
-            timer.Interval = 25;
+            timer.Interval = 10;
             timer.Tick += new EventHandler((o, ev) =>
             {
                 count++;
@@ -434,18 +437,19 @@ namespace kg_lab1
         //анимация движения по спирали вдоль OY
         private void taskOY_Click(object sender, EventArgs e)
         {
-            int way = 90;
+            int way = 180;
             int count = 0;
-            int coef = 5;
+            int coef = 3;
+            float angle = (float)(10 * Math.PI / 180);
             float[,] Spiral =
             {
-                { ((float)(Math.Cos(25))), 0, -((float)(Math.Sin(25))), 0},
+                { ((float)(Math.Cos(angle))), 0, -((float)(Math.Sin(angle))), 0},
                 { 0, 1, 0, 0},
-                { ((float)(Math.Sin(25))), 0, ((float)(Math.Cos(25))), 0},
-                { 0, 2, 0, 1}
+                { ((float)(Math.Sin(angle))), 0, ((float)(Math.Cos(angle))), 0},
+                { 0, 1, 0, 1}
             };
             Timer timer = new Timer();
-            timer.Interval = 25;
+            timer.Interval = 10;
             timer.Tick += new EventHandler((o, ev) =>
             {
                 count++;
@@ -472,18 +476,19 @@ namespace kg_lab1
         //анимация движения по спирали вдоль OZ
         private void taskOZ_Click(object sender, EventArgs e)
         {
-            int way = 90;
+            int way = 180;
             int count = 0;
-            int coef = 5;
+            int coef = 3;
+            float angle = (float)(10 * Math.PI / 180);
             float[,] Spiral =
             {
-                { ((float)(Math.Cos(25))), ((float)(Math.Sin(25))), 0, 0},
-                { -((float)(Math.Sin(25))), ((float)(Math.Cos(25))), 0, 0},
+                { ((float)(Math.Cos(angle))), ((float)(Math.Sin(angle))), 0, 0},
+                { -((float)(Math.Sin(angle))), ((float)(Math.Cos(angle))), 0, 0},
                 { 0, 0, 1, 0},
                 { 0, 0, 1, 1}
             };
             Timer timer = new Timer();
-            timer.Interval = 25;
+            timer.Interval = 10;
             timer.Tick += new EventHandler((o, ev) =>
             {
                 count++;

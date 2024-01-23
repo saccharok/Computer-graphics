@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Correction</title>
+    <title>Image Filtering</title>
 
     <style>
         body {
@@ -31,35 +31,23 @@
         #urlInput {
             width: 50vw;
         }
-        #histInput {
-            width: 50px;
-        }
         #canvas {
             display: inline-block;
-            width: 37.5vw;
-            height: 50vh;
+            width: 47.5vw;
+            height: 60vh;
             margin-top: 30px;
             border: 1px;
             border-style: solid;
         }
-        .chartWrapper {
-            display: inline-block;
-            width: 50vw;
-            height: 50vh;
-            margin-left: 15px;
-            margin-top: 30px;
-        }
+        
     </style>
 
     <!-- libs -->
-    <!-- chart.js-->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
-	
 </head>
 
 <body>
     <div>
-        <h1 style="text-align: center;"> Image Correction </h1>
+        <h1 style="text-align: center;"> Image Filtering </h1>
     </div>
 
     <label for="urlInput" id="inputLabel">Image URL:</label>
@@ -70,25 +58,15 @@
     
     <canvas id="canvas"></canvas>
 
-    <div class= "chartWrapper">
-        <canvas id="chart"></canvas>
-    </div>
-
     <div id = "controlButtons">
-        <label>Y max value:</label>
-        <input type="text" id="histInput">
-        <button id="histButton">Update brightness histogram</button>
-        <button id="grayscaleButton" class= "buttons">Grayscale</button>
-        <button id="invertButton" class= "buttons">Invert</button>
-
-        <input type="text" id="brightnessInput" class="inputs">
-        <button id="brightnessButton">Brightness adjustment</button>
-
-        <input type="text" id="contrastInput" class="inputs">
-        <button id="contrastButton">Contrast adjustment</button>
-
-        <input type="text" id="binarizationInput" class="inputs">
-        <button id="binarizationButton">Binarization</button>
+        
+        <button id="noiseButton">Add noise</button>
+        <button id="gaussianButton">Add Gaussian noise</button>
+        <button id="uniformButton">Uniform filter</button>
+        <button id="medianButton">Median filter</button>
+        <button id="sharpnessButton">Sharpness</button>
+        <button id="embossingButton">Embossing</button>
+        
     </div>
     
     

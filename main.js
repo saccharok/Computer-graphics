@@ -1,192 +1,177 @@
-const DEFAULT_IMG_URL = "https://i1.wp.com/www.bitcoincenternyc.com/wp-content/uploads/2019/04/Japan-G20.jpg?fit=4181%2C2787&ssl=1"
-const DEFAULT_HIST_MAX = 2500;
-const BUTTON_DISTANCE = 30;
+const DEFAULT_IMG_URL = "https://i0.wp.com/www.gamingconviction.com/wp-content/uploads/2020/04/Japan.jpg?fit=2032%2C1269&ssl=1"
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext('2d');
 
-function drawBrightnessHistogram(chart, maxValue = DEFAULT_HIST_MAX) {
-    // Get image data from canvas
+function medianFilter(size = 3) {
+  var width = canvas.width;
+  var height = canvas.height;
+
+  var half = Math.floor(size / 2);
+
+  var inputData = context.getImageData(0, 0, width, height).data;
+
+  var output = context.createImageData(width, height);
+  var outputData = output.data;
+
+  // Go through image pixels
+  for (var pixelY = 0; pixelY < height; pixelY++) {
+    for (var pixelX = 0; pixelX < width; pixelX++) {
+      var r = 0, g = 0, b = 0, a = 0;;
+
+      let pixels = [];
+      
+      // Go through filter
+      for (var filterY = 0; filterY < size; filterY++) {
+        for (var filterX = 0; filterX < size; filterX++) {          
+          // Border crossing check
+          var neighborY = Math.min(
+            height - 1, Math.max(0, pixelY + filterY - half)
+          );
+          var neighborX = Math.min(
+            width - 1, Math.max(0, pixelX + filterX - half)
+          );
+          
+          // Get rgba from original image
+          var inputIndex = (neighborY * width + neighborX) * 4;
+          r = inputData[inputIndex];
+          g = inputData[inputIndex + 1];
+          b = inputData[inputIndex + 2];
+          a = inputData[inputIndex + 3];
+          
+          // Push rgba with brightness
+          pixels.push([r, g, b, a, Math.round(0.299 * r + 0.5876 * g + 0.114 * b)]);
+        }
+      }
+
+      // Sort by brightness
+      pixels.sort((a, b) => {return a[4] - b[4]});
+      // Get median
+      let median = pixels[Math.floor(size * size / 2)];
+      
+      // Set new rgba for pixel
+      var outputIndex = (pixelY * width + pixelX) * 4;
+      outputData[outputIndex] = median[0];
+      outputData[outputIndex + 1] = median[1];
+      outputData[outputIndex + 2] = median[2];
+      outputData[outputIndex + 3] = median[3];
+    }
+  }
+  
+  context.putImageData(output, 0, 0);
+}
+
+function convolve(filter, offset = 0) {
+    var width = canvas.width;
+    var height = canvas.height;
+  
+    var size = Math.sqrt(filter.length);
+    var half = Math.floor(size / 2);
+  
+    var inputData = context.getImageData(0, 0, width, height).data;
+  
+    var output = context.createImageData(width, height);
+    var outputData = output.data;
+
+    // Go through image pixels
+    for (var pixelY = 0; pixelY < height; pixelY++) {
+      for (var pixelX = 0; pixelX < width; pixelX++) {
+        var r = 0, g = 0, b = 0;
+        
+        // Go through filter
+        for (var filterY = 0; filterY < size; filterY++) {
+          for (var filterX = 0; filterX < size; filterX++) {
+            var weight = filter[filterY * size + filterX];
+            
+            // Border crossing check
+            var neighborY = Math.min(
+              height - 1, Math.max(0, pixelY + filterY - half)
+            );
+            var neighborX = Math.min(
+              width - 1, Math.max(0, pixelX + filterX - half)
+            );
+            
+            // Sum rgba from original image
+            var inputIndex = (neighborY * width + neighborX) * 4;
+            r += inputData[inputIndex] * weight;
+            g += inputData[inputIndex + 1] * weight;
+            b += inputData[inputIndex + 2] * weight;
+          }
+        }
+        
+        // Set new rgba
+        var outputIndex = (pixelY * width + pixelX) * 4;
+        outputData[outputIndex] = r + offset;
+        outputData[outputIndex + 1] = g + offset;
+        outputData[outputIndex + 2] = b + offset;
+        outputData[outputIndex + 3] = 255;
+      }
+    }
+    
+    context.putImageData(output, 0, 0);
+}
+
+function uniformFilter() {
+    let filter = [
+      1/9, 1/9, 1/9,
+      1/9, 1/9, 1/9,
+      1/9, 1/9, 1/9,
+    ];
+
+    convolve(filter);
+}
+
+function sharpness() {
+  let filter = [
+    -0.25, -0.25, -0.25,
+    -0.25, 3, -0.25,
+    -0.25, -0.25, -0.25
+  ];
+
+  convolve(filter, 0);
+}
+
+function embossing() {
+    let filter = [
+        1, 0, 0,
+        0, 0, 0,
+        0, 0, -1
+    ];
+    
+    convolve(filter, 128);
+}
+
+function simpleNoise() {
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    // Compute brightness
-    var dict = Array(256).fill(0);
-
-    for (let i = 0; i < data.length; i += 4) {
-        var brightness = Math.round(
-            0.299 * data[i] + 0.5876 * data[i + 1] + 0.114 * data[i + 2]
-        );
-        
-        dict[brightness] += 1;
-    }
-
-    // Set max y value
-    for (let i = 0; i < dict.length; i += 1) {
-        if(dict[i] > maxValue) {
-            dict[i] = maxValue;
+    for (var i = 0; i < data.length; i += 4) {
+        if(Math.random() > 0.95) {
+            data[i] = 255;     // red
+            data[i + 1] = 255; // green
+            data[i + 2] = 255; // blue
         }
     }
 
-    // Updating chart
-    chart.config.data.datasets[0].data = dict;
-    chart.update();
-}
-
-function invert() {
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    
-    for (var i = 0; i < data.length; i += 4) {
-        data[i] = 255 - data[i];         // red
-        data[i + 1] = 255 - data[i + 1]; // green
-        data[i + 2] = 255 - data[i + 2]; // blue
-    }
-
-    context.putImageData(imageData, 0, 0);
-};
-
-function grayscale() {
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    
-    for (var i = 0; i < data.length; i += 4) {
-        var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-        data[i] = avg;      // red
-        data[i + 1] = avg;  // green
-        data[i + 2] = avg;  // blue
-    }
-
-    context.putImageData(imageData, 0, 0);
-};
-
-function brightnessAdjustment(coefficent) {
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    
-    for (var i = 0; i < data.length; i += 4) {
-        data[i] += coefficent;        // red
-        data[i + 1] += coefficent;    // green
-        data[i + 2] += coefficent;     // blue
-
-        if (data[i] > 255)
-            data[i] = 255;
-        else if (data[i] < 0)
-            data[i] = 0;
-        
-        if (data[i + 1] > 255)
-            data[i + 1] = 255;
-        else if (data[i + 1] < 0)
-            data[i + 1] = 0;
-        
-        if (data[i + 2] > 255)
-            data[i + 2] = 255;
-        else if (data[i + 2] < 0)
-            data[i + 2] = 0;
-    }
-
     context.putImageData(imageData, 0, 0);
 }
 
-function contrastAdjustment(coefficent) {
+function gaussianNoise(power = 50) {
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    let averageGray = 0;
-
     for (var i = 0; i < data.length; i += 4) {
-        averageGray += (
-            data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722
-        );
-    }
+        var noise = ((Math.random() + Math.random() - 1) * power);
 
-    averageGray /= data.length / 4;
-    
-    for (var i = 0; i < data.length; i += 4) {
-        data[i] += Math.round(
-            (coefficent * (data[i] - averageGray) + averageGray) / 255
-        );    
-        data[i + 1] += Math.round(
-            (coefficent * (data[i + 1] - averageGray) + averageGray) / 255
-        );   
-        data[i + 2] += Math.round(
-            (coefficent * (data[i + 2] - averageGray) + averageGray) / 255
-        ); 
-
-        if (data[i] > 255)
-            data[i] = 255;
-        else if (data[i] < 0)
-            data[i] = 0;
-        
-        if (data[i + 1] > 255)
-            data[i + 1] = 255;
-        else if (data[i + 1] < 0)
-            data[i + 1] = 0;
-        
-        if (data[i + 2] > 255)
-            data[i + 2] = 255;
-        else if (data[i + 2] < 0)
-            data[i + 2] = 0;
-    }
-
-    context.putImageData(imageData, 0, 0);
-}
-
-function binarization(threshold) {
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    for (var i = 0; i < data.length; i += 4) {
-        let total = data[i] + data[i + 1] + data[i + 2];
-
-        if (total > threshold) {
-            data[i] = 255;
-            data[i + 1] = 255;
-            data[i + 2] = 255;
-        }
-        else {
-            data[i] = 0;
-            data[i + 1] = 0;
-            data[i + 2] = 0;
-        }
+        data[i] = data[i] + noise;         // red
+        data[i + 1] = data[i + 1] + noise; // green
+        data[i + 2] = data[i + 2] + noise; // blue
     }
 
     context.putImageData(imageData, 0, 0);
 }
 
 function main() {
-    // Draw histogram
-    var ctx = document.getElementById('chart');
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: Array.from(Array(256).keys()),
-            datasets: [{
-                barPercentage: 0.5,
-                barThickness: 6,
-                maxBarThickness: 8,
-                minBarLength: 2,
-                data: Array(256).fill(0),
-                backgroundColor: "rgba(0, 0, 255, 1)",
-            }],
-        },
-        options: {
-            responsive: true,
-            title: {
-                display: true,
-                fontSize: 16,
-                text: "Brightness Histogram"
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }]
-            },
-        }
-    });
-
     // Adding listener to load button
     const loadButton = document.getElementById("loadButton");
     
@@ -203,80 +188,57 @@ function main() {
 
             context.drawImage(image, 0, 0, image.width, image.height,
                  0, 0, canvas.offsetWidth, canvas.offsetHeight);
-
-            drawBrightnessHistogram(chart);
         }
 
         image.setAttribute("src", url);
         image.setAttribute("crossOrigin", "");
     })
 
-    // Adding listener to update brightness histogram button
-    const histInput = document.getElementById("histInput");
-    histInput.setAttribute("value", DEFAULT_HIST_MAX);
-
-    const histButton = document.getElementById("histButton");
-    histButton.addEventListener("click", () => {
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
-    });
-
     // Specifying url input
     const urlInput = document.getElementById("urlInput");
     urlInput.setAttribute("value", DEFAULT_IMG_URL);
 
-    // Adding listener to grayscaleButton
-    const grayscaleButton = document.getElementById("grayscaleButton");
-    grayscaleButton.addEventListener("click", () => {
-        grayscale();
 
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
-    });
-
-    // Adding listener to invertButton
-    const invertButton = document.getElementById("invertButton");
-    invertButton.addEventListener("click", () => {
-        invert();
-        
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
-    });
-
-    // Adding listener to brightnessButton
-    const brightnessInput = document.getElementById("brightnessInput");
-    const brightnessButton = document.getElementById("brightnessButton");
+    // Adding listener to noiseButton
+    const noiseButton = document.getElementById("noiseButton");
     
-    brightnessButton.addEventListener("click", () => {
-        let coefficent =  parseInt(brightnessInput.value);
-        brightnessAdjustment(coefficent);
-        
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
+    noiseButton.addEventListener("click", () => {
+        simpleNoise();
     });
 
-    // Adding listener to contrastButton
-    const contrastInput = document.getElementById("contrastInput");
-    const contrastButton = document.getElementById("contrastButton");
+    // Adding listener to noiseButton
+    const gaussianButton = document.getElementById("gaussianButton");
     
-    contrastButton.addEventListener("click", () => {
-        let coefficent =  parseFloat(eval(contrastInput.value));
-        contrastAdjustment(coefficent);
-        
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
+    gaussianButton.addEventListener("click", () => {
+        gaussianNoise();
     });
 
-    // Adding listener to binarization
-    const binarizationInput = document.getElementById("binarizationInput");
-    const binarizationButton = document.getElementById("binarizationButton");
+    // Adding listener to uniformButton
+    const uniformButton = document.getElementById("uniformButton");
     
-    binarizationButton.addEventListener("click", () => {
-        let coefficent =  parseInt(binarizationInput.value);
-        binarization(coefficent);
-        
-        let maxValue = parseInt(histInput.value);
-        drawBrightnessHistogram(chart, maxValue);
+    uniformButton.addEventListener("click", () => {
+        uniformFilter();
+    });
+
+    // Adding listener to medianButton
+    const medianButton = document.getElementById("medianButton");
+    
+    medianButton.addEventListener("click", () => {
+      medianFilter();
+    });
+
+    // Adding listener to sharpnessButton
+    const sharpnessButton = document.getElementById("sharpnessButton");
+    
+    sharpnessButton.addEventListener("click", () => {
+        sharpness();
+    });
+
+    // Adding listener to embossingButton
+    const embossingButton = document.getElementById("embossingButton");
+    
+    embossingButton.addEventListener("click", () => {
+        embossing();
     });
 
     loadButton.click();

@@ -1,220 +1,285 @@
-const WIDTH = window.innerWidth - 15;
-const HEIGHT = window.innerHeight - 100;
+const DEFAULT_IMG_URL = "https://i1.wp.com/www.bitcoincenternyc.com/wp-content/uploads/2019/04/Japan-G20.jpg?fit=4181%2C2787&ssl=1"
+const DEFAULT_HIST_MAX = 2500;
+const BUTTON_DISTANCE = 30;
 
-const URL = "https://borzzzenko.github.io/ComputerGraphics/Three.js-kitchen/";
+const canvas = document.getElementById("canvas");
+const context = canvas.getContext('2d');
 
-// Load .obj model with .mtl
-function loadMTLplusOBJ(mtlURL, objURL, loadFunction) {
-	const objLoader = new THREE.OBJLoader();
-	const mtlLoader = new THREE.MTLLoader();
-	mtlLoader.load(mtlURL, (materials) => {
-		materials.preload();
-		objLoader.setMaterials(materials);
-		
-		objLoader.load(objURL, loadFunction);
-	})
+function drawBrightnessHistogram(chart, maxValue = DEFAULT_HIST_MAX) {
+    // Get image data from canvas
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Compute brightness
+    var dict = Array(256).fill(0);
+
+    for (let i = 0; i < data.length; i += 4) {
+        var brightness = Math.round(
+            0.299 * data[i] + 0.5876 * data[i + 1] + 0.114 * data[i + 2]
+        );
+        
+        dict[brightness] += 1;
+    }
+
+    // Set max y value
+    for (let i = 0; i < dict.length; i += 1) {
+        if(dict[i] > maxValue) {
+            dict[i] = maxValue;
+        }
+    }
+
+    // Updating chart
+    chart.config.data.datasets[0].data = dict;
+    chart.update();
+}
+
+function invert() {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (var i = 0; i < data.length; i += 4) {
+        data[i] = 255 - data[i];         // red
+        data[i + 1] = 255 - data[i + 1]; // green
+        data[i + 2] = 255 - data[i + 2]; // blue
+    }
+
+    context.putImageData(imageData, 0, 0);
+};
+
+function grayscale() {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (var i = 0; i < data.length; i += 4) {
+        var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        data[i] = avg;      // red
+        data[i + 1] = avg;  // green
+        data[i + 2] = avg;  // blue
+    }
+
+    context.putImageData(imageData, 0, 0);
+};
+
+function brightnessAdjustment(coefficent) {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (var i = 0; i < data.length; i += 4) {
+        data[i] += coefficent;        // red
+        data[i + 1] += coefficent;    // green
+        data[i + 2] += coefficent;     // blue
+
+        if (data[i] > 255)
+            data[i] = 255;
+        else if (data[i] < 0)
+            data[i] = 0;
+        
+        if (data[i + 1] > 255)
+            data[i + 1] = 255;
+        else if (data[i + 1] < 0)
+            data[i + 1] = 0;
+        
+        if (data[i + 2] > 255)
+            data[i + 2] = 255;
+        else if (data[i + 2] < 0)
+            data[i + 2] = 0;
+    }
+
+    context.putImageData(imageData, 0, 0);
+}
+
+function contrastAdjustment(coefficent) {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    let averageGray = 0;
+
+    for (var i = 0; i < data.length; i += 4) {
+        averageGray += (
+            data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722
+        );
+    }
+
+    averageGray /= data.length / 4;
+    
+    for (var i = 0; i < data.length; i += 4) {
+        data[i] += Math.round(
+            (coefficent * (data[i] - averageGray) + averageGray) / 255
+        );    
+        data[i + 1] += Math.round(
+            (coefficent * (data[i + 1] - averageGray) + averageGray) / 255
+        );   
+        data[i + 2] += Math.round(
+            (coefficent * (data[i + 2] - averageGray) + averageGray) / 255
+        ); 
+
+        if (data[i] > 255)
+            data[i] = 255;
+        else if (data[i] < 0)
+            data[i] = 0;
+        
+        if (data[i + 1] > 255)
+            data[i + 1] = 255;
+        else if (data[i + 1] < 0)
+            data[i + 1] = 0;
+        
+        if (data[i + 2] > 255)
+            data[i + 2] = 255;
+        else if (data[i + 2] < 0)
+            data[i + 2] = 0;
+    }
+
+    context.putImageData(imageData, 0, 0);
+}
+
+function binarization(threshold) {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (var i = 0; i < data.length; i += 4) {
+        let total = data[i] + data[i + 1] + data[i + 2];
+
+        if (total > threshold) {
+            data[i] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+        }
+        else {
+            data[i] = 0;
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+        }
+    }
+
+    context.putImageData(imageData, 0, 0);
 }
 
 function main() {
-	// Create scene, camera and render
-	var scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xAAAAAA);
+    // Draw histogram
+    var ctx = document.getElementById('chart');
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Array.from(Array(256).keys()),
+            datasets: [{
+                barPercentage: 0.5,
+                barThickness: 6,
+                maxBarThickness: 8,
+                minBarLength: 2,
+                data: Array(256).fill(0),
+                backgroundColor: "rgba(0, 0, 255, 1)",
+            }],
+        },
+        options: {
+            responsive: true,
+            title: {
+                display: true,
+                fontSize: 16,
+                text: "Brightness Histogram"
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            },
+        }
+    });
 
-	const FOV = 90;
-	const ASPECT = WIDTH/HEIGHT;
-	const NEAR = 0.1;
-	const FAR = 100;
-	
-	var camera = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR);
-	camera.position.z = -5;
+    // Adding listener to load button
+    const loadButton = document.getElementById("loadButton");
+    
+    loadButton.addEventListener("click", () => {
+        // Loading image when button is clicked
+        
+        var url = urlInput.value;
+        
+        let image = document.createElement("img");
+        
+        image.onload = function() {
+            canvas.setAttribute("width", canvas.offsetWidth);
+            canvas.setAttribute("height", canvas.offsetHeight);
 
-	var renderer = new THREE.WebGLRenderer();
-	renderer.setSize(WIDTH, HEIGHT);
-	renderer.shadowMap.enabled = true;
-	document.body.appendChild(renderer.domElement);
+            context.drawImage(image, 0, 0, image.width, image.height,
+                 0, 0, canvas.offsetWidth, canvas.offsetHeight);
 
-	// Camera controls
-	const controls = new THREE.OrbitControls(camera, renderer.domElement);
-	controls.update();
-	
-	// Floor
-	const planeSize = 10;
-	const textureLoader = new THREE.TextureLoader();
-	
-	const floorTexture = textureLoader.load(URL + "textures/wood-floor.jpg");
-	floorTexture.wrapS = THREE.RepeatWrapping;
-	floorTexture.wrapT = THREE.RepeatWrapping;
-	floorTexture.magFilter = THREE.NearestFilter;
-	
-	const repeats = planeSize / 2;
-	floorTexture.repeat.set(repeats, repeats);
+            drawBrightnessHistogram(chart);
+        }
 
-	const planeGeo = new THREE.PlaneBufferGeometry(planeSize, planeSize);
-	const planeMat = new THREE.MeshLambertMaterial({
-		map: floorTexture,
-		side: THREE.DoubleSide,
-	});
-	
-	const floor = new THREE.Mesh(planeGeo, planeMat);
-	floor.rotation.x = Math.PI * -0.5;
-	floor.position.set(0, 0.1, 0);
-	floor.receiveShadow = false;
-	
-	scene.add(floor);
+        image.setAttribute("src", url);
+        image.setAttribute("crossOrigin", "");
+    })
 
-	// Adding room walls
-	let width = 10;
-	let height = 5;
-	let depth = 10;
-	
-	var geometry = new THREE.BoxGeometry(width, height, depth);
-	var material = new THREE.MeshPhongMaterial({
-		color: 0xffffff,
-		side: THREE.DoubleSide
-	});
+    // Adding listener to update brightness histogram button
+    const histInput = document.getElementById("histInput");
+    histInput.setAttribute("value", DEFAULT_HIST_MAX);
 
-	var roomCube = new THREE.Mesh(geometry, material);
-	roomCube.receiveShadow = true;
-	roomCube.position.set(0, 2.5, 0);
-	
-	scene.add(roomCube);
+    const histButton = document.getElementById("histButton");
+    histButton.addEventListener("click", () => {
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	// Lamp fiber
-	var fiberRadius = 0.2;
-	var fiberHeight = 5;
-	
-	var fiberGeometry = new THREE.CylinderGeometry(fiberRadius,
-		 fiberRadius, fiberHeight);
-	var fiberMaterial = new THREE.MeshPhongMaterial();
-	
-	var lampFiber = new THREE.Mesh(fiberGeometry, fiberMaterial);
-	lampFiber.position.set(0, 4.7, 0);
-	lampFiber.scale.set(0.1, 0.1, 0.1);
-	
-	scene.add(lampFiber);
-	
-	// Lamp
-	var lampRadius = 2;
-	var lampSegments = 64;
+    // Specifying url input
+    const urlInput = document.getElementById("urlInput");
+    urlInput.setAttribute("value", DEFAULT_IMG_URL);
 
-	var lampGeometry = new THREE.SphereGeometry(lampRadius, lampSegments,
-		 lampSegments);
-	var lampMaterial = new THREE.MeshBasicMaterial({
-		color: 0xffffff,
-	});
-	
-	var lamp = new THREE.Mesh(lampGeometry, lampMaterial);
-	lamp.position.set(0, 4.5, 0);
-	lamp.scale.set(0.1, 0.1, 0.1);
-	
-	scene.add(lamp);
+    // Adding listener to grayscaleButton
+    const grayscaleButton = document.getElementById("grayscaleButton");
+    grayscaleButton.addEventListener("click", () => {
+        grayscale();
 
-	// Lamp light
-	var lampLightIntensity = 1;
-	var lampLightDistance = 15;
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	const lampLight = new THREE.PointLight( 0xffffff, lampLightIntensity,
-		 lampLightDistance);
-	lampLight.position.set(0, 4.5, 0);
-	lampLight.castShadow = true;
-	
-	scene.add(lampLight);
+    // Adding listener to invertButton
+    const invertButton = document.getElementById("invertButton");
+    invertButton.addEventListener("click", () => {
+        invert();
+        
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	// Table
-	const tableTexture = textureLoader.load(URL + "textures/table-black.jpg");
-	tableTexture.magFilter = THREE.NearestFilter
-	
-	// Table leg
-	var legTopRadius = 0.15;
-	var legBottomRadius = 0.1;
-	var legHeight = 1.27;
-	var legSegnments = 64;
+    // Adding listener to brightnessButton
+    const brightnessInput = document.getElementById("brightnessInput");
+    const brightnessButton = document.getElementById("brightnessButton");
+    
+    brightnessButton.addEventListener("click", () => {
+        let coefficent =  parseInt(brightnessInput.value);
+        brightnessAdjustment(coefficent);
+        
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	var tableLegGeometry = new THREE.CylinderGeometry(legTopRadius, legBottomRadius,
-		legHeight, legSegnments);
-	var legMaterial = new THREE.MeshPhongMaterial({
-		color: 0xdaa520,
-  		emissive: 0x000000,
-  		specular: 0xbcbcbc,
-		map: tableTexture,
-		roughness: 0,
-	});
-	
-	var tableLeg = new THREE.Mesh(tableLegGeometry, legMaterial);
-	tableLeg.position.set(2, 0.75,  -1.5);
-	tableLeg.castShadow = true;
-	tableLeg.receiveShadow = true;
+    // Adding listener to contrastButton
+    const contrastInput = document.getElementById("contrastInput");
+    const contrastButton = document.getElementById("contrastButton");
+    
+    contrastButton.addEventListener("click", () => {
+        let coefficent =  parseFloat(eval(contrastInput.value));
+        contrastAdjustment(coefficent);
+        
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	scene.add(tableLeg);
+    // Adding listener to binarization
+    const binarizationInput = document.getElementById("binarizationInput");
+    const binarizationButton = document.getElementById("binarizationButton");
+    
+    binarizationButton.addEventListener("click", () => {
+        let coefficent =  parseInt(binarizationInput.value);
+        binarization(coefficent);
+        
+        let maxValue = parseInt(histInput.value);
+        drawBrightnessHistogram(chart, maxValue);
+    });
 
-	// Table top
-	var tableTopRadius = 1.5;
-	var tableBottomRadius = 1.5;
-	var tableHeight = 0.1;
-	var tableSegnments = 64;
-
-	var tableGeometry = new THREE.CylinderGeometry(tableTopRadius, tableBottomRadius,
-		tableHeight, tableSegnments);
-	var tableMaterial = new THREE.MeshPhongMaterial({
-		color: 0xdaa520,
-  		emissive: 0x000000,
-  		specular: 0xbcbcbc,
-		map: tableTexture,
-		roughness: 0,
-	});
-	
-	var table = new THREE.Mesh(tableGeometry, tableMaterial);
-	table.position.set(2, 1.4, -1.5);
-	table.castShadow = true;
-	table.receiveShadow = true;
-
-	scene.add(table);
-
-	// Table bottom stand
-	var tableStandTopRadius = 0.5;
-	var tableStandBottomRadius = 0.5;
-	var tableStandHeight = 0.1;
-	var tableStandSegnments = 64;
-
-	var tableStandGeometry = new THREE.CylinderGeometry(tableStandTopRadius,
-		 tableStandBottomRadius, tableStandHeight, tableStandSegnments);
-	var tableStandMaterial = new THREE.MeshStandardMaterial({
-		map: tableTexture,
-		roughness: 0,
-	});
-	
-	var tableStand = new THREE.Mesh(tableStandGeometry, tableStandMaterial);
-	tableStand.position.set(2, 0.1, -1.5);
-	tableStand.castShadow = true;
-	tableStand.receiveShadow = true;
-
-	scene.add(tableStand)
-	
-	// Desk lamp light
-	var deskLampLightIntensity = 2;
-	var deskLampLightDistance = 0;
-	var deskLampLightAngle = 0.5;
-	var deskLampLightPenumbra = 0.3;
-
-	const deskLampLight = new THREE.SpotLight( 0xf0d75d, deskLampLightIntensity,
-		deskLampLightDistance, deskLampLightAngle, deskLampLightPenumbra);
-	deskLampLight.position.set(2.8, 2.6, -1.2);
-	deskLampLight.target.position.set(2, 1.5, -1);
-	deskLampLight.castShadow = true;
-	
-	scene.add(deskLampLight);
-	scene.add(deskLampLight.target);
-
-	// Animation loop
-	var animate = function() {
-		requestAnimationFrame(animate);
-
-		controls.update();
-
-		renderer.render(scene, camera);
-	}
-
-	animate();
+    loadButton.click();
 }
 
-main();
+main()
